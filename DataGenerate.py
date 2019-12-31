@@ -2,28 +2,21 @@ import tensorflow as tf
 import numpy as np
 import copy as cp
 import serial
+import time
+import matplotlib.pyplot as plt
 
-
-Mode=3 #0:TrainData, 1:Test, 2:ReadData, 3:CombineData
+Mode=0 #0:TrainData, 1:Test, 2:ReadData, 3:CombineData
 
 MotionIndex=3
-
-
-
 
 def HyperSampling(data,Lable):
     temp1=[]
     temp2=[]
-    while True:
-        it= len(data)+2
-        for i in range(0,it,2):
-            data=np.insert(data,i+1,(np.array(data[i])+np.array(data[i+1]))/2,axis=0)
-            if len(data)>=80:
-                break
-        if len(data)>=80:
-            break
+    it= len(data)+2
+    for i in range(0,it,2):
+        data=np.insert(data,i+1,(np.array(data[i])+np.array(data[i+1]))/2,axis=0)
 
-    for i in range(80):
+    for i in range(len(data)):
         temp1.extend(data[i])
     temp2.append(temp1)
     temp2.append(Lable)
@@ -34,11 +27,10 @@ def HyperSampling(data,Lable):
 def GenerateData(Mode,MotionIndex):
 
     ser = serial.Serial(
-    port='COM8',
+    port='COM10',
     baudrate=115200,
 )
 
-    
     FileName=''
     Lable = tf.one_hot([0,1,2,3,4,5,6,7,8,9,10],depth=11).eval(session=tf.Session())
     temp=[]
@@ -48,7 +40,7 @@ def GenerateData(Mode,MotionIndex):
     InitializedData=[]
     Iterator=0
     StateChecker=0
-
+    print("start")
     if Mode==0 or Mode==1:
         while True:
             if ser.readable():
@@ -57,22 +49,45 @@ def GenerateData(Mode,MotionIndex):
                 FileName="Train"+str(MotionIndex)
                 if ser.readable():
                     try:
-                        IMU=list(map(float,res.decode()[1:len(res)-1].split(',')[1:]))
+                        IMU=list(map(float,res.decode()[:].split(',')[:]))
                     except:
                         ser.read_all()
                         continue
                     if StateChecker==0 and IMU[0]==1:
                         ser.read_all()
                         InitializedData=cp.copy(IMU[1:])
+                        start=time.time()
                         StateChecker=1
                     elif StateChecker==1 and IMU[0]==1:
-                        data.extend(cp.copy(np.array(IMU[1:])-np.array(InitializedData)))
+                        data.extend(cp.copy(np.array(IMU[1:])-InitializedData))
                     elif StateChecker==1 and IMU[0]==0:
                         if len(data)<=60:
                             data.clear()
                             StateChecker=0
                             continue
-                        save.append(HyperSampling(np.array(data).reshape(-1,6),Lable[MotionIndex-1]))
+                        deltaTime=time.time()-start
+                        save.append((np.array(data)))
+                        hyperdata=np.array(HyperSampling(np.array(data).reshape(-1,3),[])[0]).reshape(-1,3)
+                        hyperdata2=np.array(HyperSampling(hyperdata,[])[0]).reshape(-1,3)
+                        print(np.array(data).reshape(-1,3))
+                        print(hyperdata)
+                        test1=[]
+                        test2=[]
+                        test3=[]
+                        for i in range(len(np.array(data).reshape(-1,3))):
+                            test1.append(np.array(data).reshape(-1,3)[i][0])
+                        for i in range(len(hyperdata)):
+                            test2.append(hyperdata[i][0])
+                        for i in range(len(hyperdata2)):
+                            test3.append(hyperdata2[i][0])
+                        x=range(-180,180)
+                        plt.figure(1)
+                        plt.plot(test1,'or')
+                        plt.figure(2)
+                        plt.plot(test2,'og')
+                        plt.figure(3)
+                        plt.plot(test3,'ob')
+                        plt.show()
                         data.clear()
                         print(Iterator)
                         if Iterator>=100:
@@ -82,20 +97,8 @@ def GenerateData(Mode,MotionIndex):
                         Iterator+=1
                         StateChecker=0
 
-            elif Mode==1:
-                IMU=list(map(float,res.decode()[1:len(res)-1].split(',')[1:]))
-                if StateChecker==0 and IMU[0]==1:
-                    InitializedData=cp.copy(IMU[1:])
-                    StateChecker=1
-                elif StateChecker==1 and IMU[0]==1:
-                    data.extend(cp.copy(np.array(IMU[1:])-np.array(InitializedData)))
-                elif StateChecker==1 and IMU[0]==0:
-                    li=[]
-                    li.append(HyperSampling(np.array(data).reshape(-1,6),Lable[MotionIndex-1])[0])
-                    ser.close()
-                    return li
 
-    elif Mode==2:
+    elif Mode==1:
         print("Read Data Mode")
         LoadData=np.load('./Data/600.npy',allow_pickle=True)
         for i in range(len(LoadData)):
@@ -104,7 +107,7 @@ def GenerateData(Mode,MotionIndex):
         print(len(LoadData[0][1]))
 
 
-    elif Mode==3:
+    elif Mode==2:
         print("Combine Mode")
         savetemp=[]
         Motion1=np.load('./Data/300.npy',allow_pickle=True)
@@ -118,14 +121,4 @@ def GenerateData(Mode,MotionIndex):
         np.save("./Data/"+str(len(savetemp)),savetemp,True)
         print(len(savetemp),"Saved")
 
-    elif Mode==4:
-        Motion1=np.load('./Data/Dummy.npy',allow_pickle=True)
-        for i in range(len(Motion1)):
-            Motion1[i][1]=Lable[10]
-        np.save("./Data/Dymmy_c",Motion1,True)
-            
-
-#GenerateData(Mode,MotionIndex)
-a=[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
-
-print(HyperSampling(np.array(a).reshape(-1,6),[]))
+GenerateData(Mode,MotionIndex)
