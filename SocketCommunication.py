@@ -23,29 +23,42 @@ size = 1024
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 5050))
 s.listen(5)
-try:
-    print ("is waiting")
+#try:
+#    print ("is waiting")
 
-    client, address = s.accept()
-    print(s.getsockname())
+#    client, address = s.accept()
+#    print(s.getsockname())
 
-    print(str(address),"Connected")
+#    print(str(address),"Connected")
 
     
-    while 1:
-        a=0
-        for i in range(30000000):
-            a+=1
-        #d = client.recv(size)
-        #if d:
-        #    print (list(map(float,d.decode()[:len(d)-1].split(','))))
-        #client.send("recieved".encode())
-        client.send('1'.encode())
-        print('send')
-
-
+#    while 1:
+#        a=0
+#        for i in range(100):
+#            a+=1
+#        d = client.recv(size)
+#        if d:
+#            print (list(map(float,d.decode()[:len(d)-1].split(','))))
+#        client.send("recieved".encode())
+       
  
-except:
-    print("closing socket")
-    client.close()
-    s.close()
+#except:
+#    print("closing socket")
+#    client.close()
+#    s.close()
+
+print ("is waiting")
+
+client, address = s.accept()
+print(s.getsockname())
+
+print(str(address),"Connected")
+while 1:
+    d = client.recv(size)
+    if d:
+        print(d.decode().split(','))
+        #try:
+        #    IMU=list(map(float,d.decode()[:len(d)-2].split(',')))
+        #except:
+        #    client.recv(size)
+        #    continue
